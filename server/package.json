@@ -1,0 +1,17 @@
+{
+  "name": "tetris-score-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "initdb": "node init.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5",
+    "pg": "^8.12.0"
+  }
+}

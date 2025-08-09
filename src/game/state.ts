@@ -1,5 +1,5 @@
 import type { Piece, PieceType, Rotation } from "./tetromino";
-import { getShape, bagGenerator, PIECE_COLORS } from "./tetromino";
+import { getShape, bagGenerator, PIECE_COLORS, bagGeneratorSeeded } from "./tetromino";
 
 export const PLAYFIELD_WIDTH = 10;
 export const PLAYFIELD_HEIGHT = 22; // 20 visible + 2 buffer
@@ -29,8 +29,8 @@ export function createEmptyField(): Cell[][] {
   return Array.from({ length: PLAYFIELD_HEIGHT }, () => Array(PLAYFIELD_WIDTH).fill(0));
 }
 
-export function createInitialState(): GameState {
-  const bag = bagGenerator();
+export function createInitialState(seed?: number): GameState {
+  const bag = (typeof seed === 'number') ? bagGeneratorSeeded(seed) : bagGenerator();
   const state: GameState = {
     field: createEmptyField(),
     active: null,
@@ -189,6 +189,7 @@ export function hardDrop(state: GameState) {
 function lockPiece(state: GameState) {
   if (!state.active) return;
   const shape = getShape(state.active);
+  let placedVisibleCells = 0;
   for (let py = 0; py < 4; py++) {
     for (let px = 0; px < 4; px++) {
       if (!shape[py][px]) continue;
@@ -196,9 +197,12 @@ function lockPiece(state: GameState) {
       const y = state.active.y + py;
       if (y >= 0 && y < PLAYFIELD_HEIGHT && x >= 0 && x < PLAYFIELD_WIDTH) {
         state.field[y][x] = state.active.type;
+        if (y >= 2) placedVisibleCells++;
       }
     }
   }
+  // Award a flat 1 point per piece placed (if any part was visible)
+  if (placedVisibleCells > 0) state.score += 1;
   state.active = null;
 }
 
@@ -237,4 +241,25 @@ export function reset(state: GameState) {
 export function getColorForCell(cell: Cell): string | null {
   if (cell === 0) return null;
   return PIECE_COLORS[cell];
+}
+
+// Adds N garbage lines at the bottom with random holes. If overflow occurs, game over.
+export function addGarbage(state: GameState, count: number) {
+  if (count <= 0) return;
+  for (let i = 0; i < count; i++) {
+    const hole = Math.floor(Math.random() * PLAYFIELD_WIDTH);
+    // Drop the top row and push a new garbage row at the bottom
+    state.field.shift();
+    const row: Cell[] = Array.from({ length: PLAYFIELD_WIDTH }, (_, x) => (x === hole ? 0 : 'Z')) as Cell[];
+    state.field.push(row);
+  }
+  // If any of the hidden rows (0 or 1) are filled, it's game over
+  for (let y = 0; y < 2; y++) {
+    for (let x = 0; x < PLAYFIELD_WIDTH; x++) {
+      if (state.field[y][x] !== 0) {
+        state.status = 'gameover';
+        return;
+      }
+    }
+  }
 }

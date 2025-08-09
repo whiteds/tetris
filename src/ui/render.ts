@@ -85,10 +85,17 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 function renderQueue(state: GameState, canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  const cell = 20;
-  const margin = 10;
-  state.queue.slice(0,5).forEach((type, i) => {
-    drawMini(ctx, type, margin, i*(cell*3)+margin, cell);
+  const items = state.queue.slice(0,3);
+  const outerMargin = 12; // slightly reduce margin to allow bigger items
+  const lane = Math.floor((canvas.height - outerMargin*2) / items.length);
+  const scale = 0.95; // bump size a bit
+  const cell = Math.max(12, Math.floor((lane / 4) * scale));
+  const box = 4 * cell; // 4x4 box size
+  const x = Math.floor((canvas.width - box) / 2);
+  items.forEach((type, i) => {
+    const laneTop = outerMargin + i * lane;
+    const y = laneTop + Math.floor((lane - box) / 2);
+    drawMini(ctx, type, x, y, cell);
   });
 }
 
@@ -96,14 +103,20 @@ function renderHold(state: GameState, canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if (!state.hold) return;
-  drawMini(ctx, state.hold, 10, 10, 20);
+  // Center mini in hold box
+  const cell = 18;
+  const box = 4 * cell;
+  const x = Math.floor((canvas.width - box) / 2);
+  const y = Math.floor((canvas.height - box) / 2);
+  drawMini(ctx, state.hold, x, y, cell);
 }
 
 function drawMini(ctx: CanvasRenderingContext2D, type: PieceType, x: number, y: number, cell: number) {
-  // Centering offsets for 4x4 box
+  // Draw within a 4x4 box at (x,y), centered per shape bounds
   const color = PIECE_COLORS[type];
   const shapes: Record<PieceType, number[][]> = {
-    I: [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
+    // Show I horizontally in previews (next/hold)
+    I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
     O: [[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
     T: [[0,1,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
     S: [[0,1,1,0],[1,1,0,0],[0,0,0,0],[0,0,0,0]],
@@ -111,11 +124,27 @@ function drawMini(ctx: CanvasRenderingContext2D, type: PieceType, x: number, y: 
     J: [[1,0,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
     L: [[0,0,1,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
   };
+  // Compute bounds
+  let minX = 4, minY = 4, maxX = -1, maxY = -1;
+  for (let py = 0; py < 4; py++) {
+    for (let px = 0; px < 4; px++) {
+      if (!shapes[type][py][px]) continue;
+      if (px < minX) minX = px;
+      if (py < minY) minY = py;
+      if (px > maxX) maxX = px;
+      if (py > maxY) maxY = py;
+    }
+  }
+  const w = (maxX - minX + 1);
+  const h = (maxY - minY + 1);
+  const offsetX = Math.floor((4 - w) / 2) * cell - minX * cell;
+  const offsetY = Math.floor((4 - h) / 2) * cell - minY * cell;
+
   for (let py = 0; py < 4; py++) {
     for (let px = 0; px < 4; px++) {
       if (!shapes[type][py][px]) continue;
       ctx.fillStyle = color;
-      ctx.fillRect(x + px*cell + 1, y + py*cell + 1, cell-2, cell-2);
+      ctx.fillRect(x + offsetX + px*cell + 1, y + offsetY + py*cell + 1, cell-2, cell-2);
     }
   }
 }

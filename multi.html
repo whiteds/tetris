@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>블록 전쟁 — 클리어가 곧 공격 · 멀티</title>
+  <script type="module">
+    import { LobbyClient } from './src/net/lobby.ts';
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) console.error('Supabase config missing');
+    const lobby = new LobbyClient(url, anonKey);
+    const roomList = document.getElementById('room-list');
+    lobby.onUpdate = (rooms) => {
+      if (!roomList) return;
+      if (!rooms.length) {
+        roomList.innerHTML = '<div class="muted" id="room-empty" style="grid-column:1/-1;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;padding:36px 12px;text-align:center;">현재 대기중인 방이 없습니다.<br/><button id="room-empty-create">방 만들기</button></div>';
+        const btn = document.getElementById('room-empty-create');
+        btn && btn.addEventListener('click', () => {
+          const titleInput = document.getElementById('room-title');
+          if (titleInput instanceof HTMLInputElement) { titleInput.focus(); titleInput.select?.(); }
+        });
+        return;
+      }
+      roomList.innerHTML = rooms.map(r => `<button class="card" data-join="${r.id}" style="display:flex;flex-direction:column;justify-content:space-between;text-align:left;padding:16px;height:110px;background:#0f142f;border:1px solid #2a2f66;border-radius:12px;color:inherit;cursor:pointer;"><div style=\"font-weight:700;font-size:14px;\">${(r.title||'Room')}</div><div style=\"display:flex;justify-content:space-between;font-size:12px;color:#9aa0c3;\"><span>${r.host}</span><span>${r.players}/${r.max}</span></div></button>`).join('');
+      roomList.querySelectorAll('button[data-join]').forEach((b) => b.addEventListener('click', (e) => {
+        const target = e.currentTarget;
+        const id = target && target.dataset ? target.dataset.join : null;
+        if (!id) return;
+        localStorage.setItem('tetris_room', id);
+        window.location.href = './game.html';
+      }));
+    };
+    const savedNick = localStorage.getItem('tetris_nick') || '';
+    if (!savedNick) showNicknameModal(); else lobby.join(savedNick);
+    function showNicknameModal() {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:grid;place-items:center;z-index:2000;';
+      const card = document.createElement('div');
+      card.className = 'panel';
+      card.style.cssText = 'width:min(480px,92vw);';
+      card.innerHTML = '<h2 style="margin:0 0 8px;">닉네임 설정</h2><p class="muted" style="margin:0 0 8px;">게임에서 표시될 이름을 입력하세요.</p>';
+      const row = document.createElement('div'); row.className = 'row';
+      const input = document.createElement('input'); input.className = 'input'; input.placeholder = 'Nickname'; input.style.flex='1 1 auto';
+      const btn = document.createElement('button'); btn.textContent = '확인';
+      row.appendChild(input); row.appendChild(btn); card.appendChild(row); overlay.appendChild(card);
+      document.body.appendChild(overlay); input.focus();
+      function commit(){ const v = (input.value||'').trim() || 'Anonymous'; localStorage.setItem('tetris_nick', v); lobby.join(v); document.body.removeChild(overlay); }
+      btn.addEventListener('click', commit); input.addEventListener('keydown',(e)=>{ if(e.key==='Enter') commit(); });
+    }
+    // Create room
+    const btnCreate = document.getElementById('btn-create');
+    btnCreate && btnCreate.addEventListener('click', () => {
+      const titleEl = document.getElementById('room-title');
+      const title = (titleEl instanceof HTMLInputElement ? titleEl.value : '').trim();
+      if (!title) { alert('방 제목을 입력하세요'); titleEl instanceof HTMLInputElement && titleEl.focus(); return; }
+      const id = lobby.createRoom(title); localStorage.setItem('tetris_room', id); window.location.href = './game.html';
+    });
+  </script>
+  <style>
+    :root{--bg:#0f1226;--fg:#e6e9ff;--muted:#9aa0c3;--accent:#5dd1ff;--panel:#171a36;--grid:#1f2347}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 800px at 70% 20%,#14173b,var(--bg));color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial;display:grid;place-items:start;gap:16px;padding:72px 16px 40px;overflow-x:hidden}
+    .topbar{position:fixed;top:0;left:0;right:0;height:56px;display:flex;align-items:center;justify-content:center;background:color-mix(in oklab,var(--panel) 85%,black 15%);border-bottom:1px solid #2a2f66;z-index:1000}
+    .title{font-weight:700}
+    .brand{font-weight:900;letter-spacing:6px;text-transform:uppercase;font-size:clamp(28px,4vw,44px);line-height:1.1;background:linear-gradient(90deg,#5dd1ff 0%,#ffd95d 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+    .panel{background:color-mix(in oklab,var(--panel) 85%,black 15%);border:1px solid #2a2f66;border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .row{display:flex;gap:8px;align-items:center}
+    .input{background:#0b0e22;border:1px solid #2a2f66;border-radius:6px;color:var(--fg);padding:10px 12px;height:40px;font:inherit}
+    .muted{color:var(--muted)} button{background:#0b0e22;color:var(--fg);border:1px solid #2a2f66;border-radius:8px;padding:10px 12px;height:40px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="topbar"><div class="title">블록 전쟁 — 클리어가 곧 공격</div></div>
+  <div class="brand" style="margin:auto;">BLOCK WAR</div>
+  <div class="panel" style="width:min(960px,92vw);">
+    <h2 style="margin:0 0 8px; font-size:16px;">방 만들기</h2>
+    <div class="row" style="gap:8px;">
+      <input id="room-title" class="input" placeholder="방 제목" style="flex:1 1 auto;">
+      <button id="btn-create">만들기</button>
+    </div>
+  </div>
+  <div class="panel" style="width:min(960px,92vw);">
+    <h2 style="margin:0 0 8px; font-size:16px;">대기 중인 방</h2>
+    <div id="room-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px; max-height: 420px; overflow:auto;">
+      <div class="muted" id="room-empty" style="grid-column:1/-1;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;padding:36px 12px;text-align:center;">현재 대기중인 방이 없습니다.<br/><button id="room-empty-create">방 만들기</button></div>
+    </div>
+  </div>
+</body>
+</html>

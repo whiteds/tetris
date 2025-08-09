@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BLOCK WAR — 클리어가 곧 공격 · 싱글</title>
+  <style>
+    :root { --bg:#0f1226; --fg:#e6e9ff; --muted:#9aa0c3; --accent:#5dd1ff; --panel:#171a36; --grid:#1f2347; }
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{ margin:0; background: radial-gradient(1200px 800px at 70% 20%, #14173b, var(--bg)); color:var(--fg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", Arial; display:grid; place-items:center; padding-top:72px; padding-bottom:120px; overflow-x:hidden }
+    .topbar{ position:fixed; top:0; left:0; right:0; height:56px; display:flex; align-items:center; justify-content:center; background: color-mix(in oklab, var(--panel) 85%, black 15%); border-bottom:1px solid #2a2f66; z-index:1000 }
+    .topbar .title{ font-weight:700; letter-spacing:0.2px }
+    .wrap{ display:grid; grid-template-columns: auto 260px; gap:16px; align-items:start }
+    .panel{ background: color-mix(in oklab, var(--panel) 85%, black 15%); border:1px solid #2a2f66; border-radius:12px; padding:12px; box-shadow:0 10px 30px rgba(0,0,0,0.35); box-sizing:border-box }
+    .sidebar{ width:260px; height:640px; display:flex; flex-direction:column }
+    .input{ background:#0b0e22; border:1px solid #2a2f66; border-radius:6px; color:var(--fg); padding:10px 12px; height:40px; font:inherit }
+    canvas{ background:var(--grid); border-radius:12px; display:block }
+    h1{ margin:0 0 8px; font-size:18px }
+    .hud{ display:grid; gap:8px; width:100%; max-width:100%; flex:1 1 auto; overflow:auto }
+    .row{ display:flex; align-items:center; gap:8px; width:100%; max-width:100%; overflow:hidden; box-sizing:border-box }
+    .row>span{ flex:1 1 auto; min-width:0 }
+    .row>strong{ flex:0 0 auto }
+    .row canvas{ flex:0 0 auto }
+    canvas#next, canvas#hold{ max-width:100%; height:auto }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono"; background:#0b0e22; border:1px solid #2a2f66; border-radius:6px; padding:2px 6px; color:var(--accent) }
+    button{ background:#0b0e22; color:var(--fg); border:1px solid #2a2f66; border-radius:8px; padding:10px 12px; cursor:pointer; height:40px }
+    button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+    .muted{ color:var(--muted); font-size:12px }
+    .controls{ gap:8px; align-items:center }
+    .controls input{ flex:1 1 auto; min-width:0 }
+    .controls button{ flex:0 0 auto }
+    /* Single scoreboard styles */
+    .single-sb { width:min(960px,92vw); margin-top:16px; }
+    .single-sb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .single-sb-title { font-size:16px; font-weight:600; }
+    .single-sb-rank { color: var(--muted); font-size: 12px; }
+    .single-sb table { width:100%; border-collapse: collapse; }
+    .single-sb th, .single-sb td { padding:6px 8px; border-bottom:1px solid #2a2f66; font-size: 13px; }
+    .single-sb th { color: var(--muted); text-align:left; }
+    .single-sb td.num, .single-sb th.num { text-align:right; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:0 12px;">
+      <div class="title" style="display:flex; gap:12px; align-items:center;"><button id="btn-back" style="height:32px; padding:6px 10px; border-radius:8px; background:#0b0e22; color:var(--fg); border:1px solid #2a2f66; cursor:pointer">← 뒤로</button> BLOCK WAR — 클리어가 곧 공격</div>
+      <div id="nick-badge" class="muted" style="white-space:nowrap;">닉네임: -</div>
+    </div>
+  </div>
+  <div class="wrap">
+    <canvas id="board" width="320" height="640" aria-label="Tetris board" role="img"></canvas>
+    <aside class="panel sidebar" aria-label="Game HUD">
+      <h1>Tetris</h1>
+      <div class="hud">
+        <div class="row"><span>Score</span><strong id="score">0</strong></div>
+        <div class="row"><span>Level</span><strong id="level">1</strong></div>
+        <div class="row"><span>Lines</span><strong id="lines">0</strong></div>
+        <div class="row"><span>Next</span><canvas id="next" width="120" height="250"></canvas></div>
+        <div class="row"><span>Hold</span><canvas id="hold" width="120" height="60"></canvas></div>
+        <div class="muted">Controls: <span class="kbd">← →</span> move, <span class="kbd">↓</span> soft, <span class="kbd">Space</span> hard, <span class="kbd">Z/X/↑</span> rotate, <span class="kbd">C</span> hold, <span class="kbd">P</span> pause, <span class="kbd">R</span> restart</div>
+        <div class="row"><button id="btn-pause">Pause</button><button id="btn-restart">Restart</button></div>
+      </div>
+    </aside>
+  </div>
+  <div id="single-scoreboard" class="panel single-sb"></div>
+  <script type="module">
+    import './src/index.ts';
+    import { loadHighScores, computeRankForName } from './src/ui/scoreboard.ts';
+    const back = document.getElementById('btn-back');
+    back?.addEventListener('click', () => {
+      const api = (window).__tetris;
+      const isActive = api && api.getStatus && api.getStatus() === 'playing' && !api.isPaused?.();
+      if (isActive) {
+        // simple modal
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:grid;place-items:center;z-index:2000;';
+        const card = document.createElement('div');
+        card.className = 'panel'; card.style.cssText = 'width:min(420px,92vw);';
+        card.innerHTML = '<h2 style="margin:0 0 8px;">게임을 멈추고 나가시겠습니까?</h2><p class="muted" style="margin:0 0 12px;">진행 중인 게임은 일시정지됩니다.</p>';
+        const row = document.createElement('div'); row.className='row';
+        const cancel = document.createElement('button'); cancel.textContent='취소';
+        const confirm = document.createElement('button'); confirm.textContent='나가기';
+        row.appendChild(cancel); row.appendChild(confirm); card.appendChild(row); overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        cancel.addEventListener('click', ()=> document.body.removeChild(overlay));
+        confirm.addEventListener('click', ()=> { try{ api.pause?.(); }catch{} location.href='./index.html'; });
+      } else {
+        location.href = './index.html';
+      }
+    });
+    // Set nickname badge
+    (function(){ const n=(localStorage.getItem('tetris_nick')||'').trim()||'Anonymous'; const el=document.getElementById('nick-badge'); if(el) el.textContent = `닉네임: ${n}`; })();
+    function renderSingleScoreboard(){
+      const sb = document.getElementById('single-scoreboard'); if (!sb) return;
+      sb.innerHTML = '';
+      const all = loadHighScores();
+      const top10 = all.sort((a,b)=> b.score-a.score || (b.date.localeCompare(a.date))).slice(0,10);
+      const name = localStorage.getItem('tetris_player_name') || localStorage.getItem('tetris_nick') || '';
+      const rank = computeRankForName(name || '');
+      // Header
+      const header = document.createElement('div');
+      header.className = 'single-sb-header';
+      const titleEl = document.createElement('div'); titleEl.className='single-sb-title'; titleEl.textContent='싱글 하이스코어 Top 10';
+      const myRankEl = document.createElement('div'); myRankEl.className='single-sb-rank'; myRankEl.textContent = name ? (rank ? `내 순위: ${rank}위` : '내 순위: 기록 없음') : '내 순위: 닉네임이 설정되지 않았습니다';
+      header.appendChild(titleEl); header.appendChild(myRankEl); sb.appendChild(header);
+      // Table
+      const table = document.createElement('table');
+      table.innerHTML = '<thead><tr><th class="num">#</th><th>Name</th><th class="num">Score</th><th class="num">Level</th><th class="num">Lines</th><th class="num">Date</th></tr></thead>';
+      const tbody = document.createElement('tbody');
+      top10.forEach((e, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="num">${i+1}</td><td>${e.name}</td><td class="num">${e.score.toLocaleString()}</td><td class="num">${typeof e.level==='number'?e.level:''}</td><td class="num">${typeof e.lines==='number'?e.lines:''}</td><td class="num">${new Date(e.date).toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      sb.appendChild(table);
+    }
+    renderSingleScoreboard();
+    window.addEventListener('tetris:score-updated', renderSingleScoreboard);
+  </script>
+</body>
+</html>

@@ -74,26 +74,44 @@ export class Input {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
-    if (this.match(e, this.bindings.left)) this.state.left = true;
-    if (this.match(e, this.bindings.right)) this.state.right = true;
-    if (this.match(e, this.bindings.softDrop)) this.state.softDrop = true;
-    if (this.match(e, this.bindings.hardDrop)) this.state.hardDrop = true;
-    if (this.match(e, this.bindings.rotateCW)) this.state.rotateCW = true;
-    if (this.match(e, this.bindings.rotateCCW)) this.state.rotateCCW = true;
-    if (this.match(e, this.bindings.hold)) this.state.hold = true;
-    if (this.match(e, this.bindings.pause)) this.state.pause = true;
-    if (this.match(e, this.bindings.restart)) this.state.restart = true;
+    let handled = false;
+    if (this.match(e, this.bindings.left)) { this.state.left = true; handled = true; }
+    if (this.match(e, this.bindings.right)) { this.state.right = true; handled = true; }
+    if (this.match(e, this.bindings.softDrop)) { this.state.softDrop = true; handled = true; }
+    if (this.match(e, this.bindings.hardDrop)) { this.state.hardDrop = true; handled = true; }
+    if (this.match(e, this.bindings.rotateCW)) { this.state.rotateCW = true; handled = true; }
+    if (this.match(e, this.bindings.rotateCCW)) { this.state.rotateCCW = true; handled = true; }
+    if (this.match(e, this.bindings.hold)) { this.state.hold = true; handled = true; }
+    if (this.match(e, this.bindings.pause)) { this.state.pause = true; handled = true; }
+    if (this.match(e, this.bindings.restart)) { this.state.restart = true; handled = true; }
+    if (handled && !isTypingTarget(e)) {
+      e.preventDefault();
+    }
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
-    if (this.match(e, this.bindings.left)) this.state.left = false;
-    if (this.match(e, this.bindings.right)) this.state.right = false;
-    if (this.match(e, this.bindings.softDrop)) this.state.softDrop = false;
-    if (this.match(e, this.bindings.hardDrop)) this.state.hardDrop = false;
-    if (this.match(e, this.bindings.rotateCW)) this.state.rotateCW = false;
-    if (this.match(e, this.bindings.rotateCCW)) this.state.rotateCCW = false;
-    if (this.match(e, this.bindings.hold)) this.state.hold = false;
-    if (this.match(e, this.bindings.pause)) this.state.pause = false;
-    if (this.match(e, this.bindings.restart)) this.state.restart = false;
+    let handled = false;
+    if (this.match(e, this.bindings.left)) { this.state.left = false; handled = true; }
+    if (this.match(e, this.bindings.right)) { this.state.right = false; handled = true; }
+    if (this.match(e, this.bindings.softDrop)) { this.state.softDrop = false; handled = true; }
+    if (this.match(e, this.bindings.hardDrop)) { this.state.hardDrop = false; handled = true; }
+    if (this.match(e, this.bindings.rotateCW)) { this.state.rotateCW = false; handled = true; }
+    if (this.match(e, this.bindings.rotateCCW)) { this.state.rotateCCW = false; handled = true; }
+    if (this.match(e, this.bindings.hold)) { this.state.hold = false; handled = true; }
+    if (this.match(e, this.bindings.pause)) { this.state.pause = false; handled = true; }
+    if (this.match(e, this.bindings.restart)) { this.state.restart = false; handled = true; }
+    if (handled && !isTypingTarget(e)) {
+      e.preventDefault();
+    }
   };
+}
+
+function isTypingTarget(e: Event): boolean {
+  const t = e.target as HTMLElement | null;
+  if (!t) return false;
+  const tag = t.tagName?.toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return true;
+  // contenteditable elements
+  if ((t as HTMLElement).isContentEditable) return true;
+  return false;
 }

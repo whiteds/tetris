@@ -223,3 +223,29 @@ export function* bagGenerator(): Generator<PieceType, never, unknown> {
     for (const t of bag) yield t;
   }
 }
+
+export function bagGeneratorWithRng(rng: () => number): Generator<PieceType, never, unknown> {
+  const types: PieceType[] = ["I","O","T","S","Z","J","L"];
+  function* gen(): Generator<PieceType, never, unknown> {
+    while (true) {
+      const bag = [...types];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      for (const t of bag) yield t;
+    }
+  }
+  return gen();
+}
+
+export function bagGeneratorSeeded(seed: number): Generator<PieceType, never, unknown> {
+  // Xorshift32
+  let s = (seed | 0) || 1;
+  const rng = () => {
+    s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
+    // Convert to [0,1)
+    return ((s >>> 0) % 0xFFFFFFFF) / 0xFFFFFFFF;
+  };
+  return bagGeneratorWithRng(rng);
+}
