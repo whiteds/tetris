@@ -65,14 +65,13 @@
   </div>
   <div id="single-scoreboard" class="panel single-sb"></div>
   <script type="module">
-    import './src/index.ts';
-    import { loadHighScores, computeRankForName } from './src/ui/scoreboard.ts';
+    import '../src/single.ts';
+    import { loadHighScores, computeRankForName } from '../src/ui/scoreboard.ts';
     const back = document.getElementById('btn-back');
     back?.addEventListener('click', () => {
       const api = (window).__tetris;
       const isActive = api && api.getStatus && api.getStatus() === 'playing' && !api.isPaused?.();
       if (isActive) {
-        // simple modal
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:grid;place-items:center;z-index:2000;';
         const card = document.createElement('div');
@@ -84,12 +83,11 @@
         row.appendChild(cancel); row.appendChild(confirm); card.appendChild(row); overlay.appendChild(card);
         document.body.appendChild(overlay);
         cancel.addEventListener('click', ()=> document.body.removeChild(overlay));
-        confirm.addEventListener('click', ()=> { try{ api.pause?.(); }catch{} location.href='./index.html'; });
+        confirm.addEventListener('click', ()=> { try{ api.pause?.(); }catch{} location.href='../index.html'; });
       } else {
-        location.href = './index.html';
+        location.href = '../index.html';
       }
     });
-    // Set nickname badge
     (function(){ const n=(localStorage.getItem('tetris_nick')||'').trim()||'Anonymous'; const el=document.getElementById('nick-badge'); if(el) el.textContent = `닉네임: ${n}`; })();
     function renderSingleScoreboard(){
       const sb = document.getElementById('single-scoreboard'); if (!sb) return;
@@ -98,13 +96,11 @@
       const top10 = all.sort((a,b)=> b.score-a.score || (b.date.localeCompare(a.date))).slice(0,10);
       const name = localStorage.getItem('tetris_player_name') || localStorage.getItem('tetris_nick') || '';
       const rank = computeRankForName(name || '');
-      // Header
       const header = document.createElement('div');
       header.className = 'single-sb-header';
       const titleEl = document.createElement('div'); titleEl.className='single-sb-title'; titleEl.textContent='싱글 하이스코어 Top 10';
       const myRankEl = document.createElement('div'); myRankEl.className='single-sb-rank'; myRankEl.textContent = name ? (rank ? `내 순위: ${rank}위` : '내 순위: 기록 없음') : '내 순위: 닉네임이 설정되지 않았습니다';
       header.appendChild(titleEl); header.appendChild(myRankEl); sb.appendChild(header);
-      // Table
       const table = document.createElement('table');
       table.innerHTML = '<thead><tr><th class="num">#</th><th>Name</th><th class="num">Score</th><th class="num">Level</th><th class="num">Lines</th><th class="num">Date</th></tr></thead>';
       const tbody = document.createElement('tbody');

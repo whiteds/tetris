@@ -46,8 +46,8 @@
       function commit(){ const v=(input.value||'').trim()||'Anonymous'; localStorage.setItem('tetris_nick', v); try{ console.log('[Tetris] nickname set:', v); }catch{} document.body.removeChild(overlay); next(); }
       btn.addEventListener('click', commit); input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') commit(); });
     }
-    document.getElementById('go-multi').addEventListener('click',(e)=>{ e.preventDefault(); ensureNicknameThen(()=>{ location.href='./multi.html'; }); });
-    document.getElementById('go-single').addEventListener('click',(e)=>{ e.preventDefault(); ensureNicknameThen(()=>{ location.href='./game_single.html'; }); });
+    document.getElementById('go-multi').addEventListener('click',(e)=>{ e.preventDefault(); ensureNicknameThen(()=>{ location.href='/multi/'; }); });
+    document.getElementById('go-single').addEventListener('click',(e)=>{ e.preventDefault(); ensureNicknameThen(()=>{ location.href='/single/'; }); });
   </script>
 </body>
 </html>
